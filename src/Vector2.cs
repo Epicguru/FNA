@@ -195,11 +195,26 @@ namespace Microsoft.Xna.Framework
 		/// Turns this <see cref="Vector2"/> to a unit vector with the same direction.
 		/// </summary>
 		public void Normalize()
-		{
-			float val = 1.0f / (float) Math.Sqrt((X * X) + (Y * Y));
+        {
+            float lenSqr = (X * X) + (Y * Y);
+            if (lenSqr == 0f)
+                return;
+			float val = 1.0f / (float) Math.Sqrt(lenSqr);
 			X *= val;
 			Y *= val;
 		}
+
+        /// <summary>
+        /// Returns a version of this vector2 with the same direction but length 1.
+        /// </summary>
+        public Vector2 Normalized()
+        {
+            float lenSqr = (X * X) + (Y * Y);
+            if (lenSqr == 0f)
+                return this;
+            float val = 1.0f / (float)Math.Sqrt(lenSqr);
+            return new Vector2(X * val, Y * val);
+        }
 
 		/// <summary>
 		/// Returns a <see cref="String"/> representation of this <see cref="Vector2"/> in the format:
@@ -696,8 +711,12 @@ namespace Microsoft.Xna.Framework
 		/// <param name="value">Source <see cref="Vector2"/>.</param>
 		/// <returns>Unit vector.</returns>
 		public static Vector2 Normalize(Vector2 value)
-		{
-			float val = 1.0f / (float) Math.Sqrt((value.X * value.X) + (value.Y * value.Y));
+        {
+            float lenSqr = (value.X * value.X) + (value.Y * value.Y);
+            if (lenSqr == 0f)
+                return value;
+
+			float val = 1.0f / (float) Math.Sqrt(lenSqr);
 			value.X *= val;
 			value.Y *= val;
 			return value;
@@ -709,8 +728,14 @@ namespace Microsoft.Xna.Framework
 		/// <param name="value">Source <see cref="Vector2"/>.</param>
 		/// <param name="result">Unit vector as an output parameter.</param>
 		public static void Normalize(ref Vector2 value, out Vector2 result)
-		{
-			float val = 1.0f / (float) Math.Sqrt((value.X * value.X) + (value.Y * value.Y));
+        {
+            float lenSqr = (value.X * value.X) + (value.Y * value.Y);
+            if (lenSqr == 0f)
+            {
+				result = value;
+				return;
+            }
+			float val = 1.0f / (float) Math.Sqrt(lenSqr);
 			result.X = value.X * val;
 			result.Y = value.Y * val;
 		}
