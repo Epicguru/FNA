@@ -195,7 +195,7 @@ namespace Microsoft.Xna.Framework
 		/// <returns><c>true</c> if the instances are equal; <c>false</c> otherwise.</returns>
 		public static bool operator ==(Point a, Point b)
 		{
-			return a.Equals(b);
+			return a.X == b.X && a.Y == b.Y;
 		}
 
 		/// <summary>
@@ -206,7 +206,7 @@ namespace Microsoft.Xna.Framework
 		/// <returns><c>true</c> if the instances are not equal; <c>false</c> otherwise.</returns>
 		public static bool operator !=(Point a, Point b)
 		{
-			return !a.Equals(b);
+			return a.X != b.X || a.Y != b.Y;
 		}
 
 		#endregion
