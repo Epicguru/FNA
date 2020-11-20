@@ -15,6 +15,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using Microsoft.Xna.Framework.Design;
@@ -1644,6 +1645,22 @@ namespace Microsoft.Xna.Framework
 			A = (byte) MathHelper.Clamp(alpha, Byte.MinValue, Byte.MaxValue);
 		}
 
+#if NETSTANDARD2_0
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Color Create(byte r, byte g, byte b, byte a)
+        {
+            return new Color(r, g, b, a);
+        }
+		private Color(byte r, byte g, byte b, byte a)
+        {
+            packedValue = 0;
+			R = r;
+			G = g;
+			B = b;
+			A = a;
+        }
+#endif
+
 		/// <summary>
 		/// Constructs an RGBA color from scalars which representing red, green, blue and alpha values.
 		/// </summary>
@@ -1661,18 +1678,18 @@ namespace Microsoft.Xna.Framework
 			A = (byte) MathHelper.Clamp(alpha * 255, Byte.MinValue, Byte.MaxValue);
 		}
 
-		#endregion
+#endregion
 
-		#region Private Constructors
+#region Private Constructors
 
 		private Color(uint packedValue)
 		{
 			this.packedValue = packedValue;
 		}
 
-		#endregion
+#endregion
 
-		#region Public Methods
+#region Public Methods
 
 		/// <summary>
 		/// Compares whether current instance is equal to specified <see cref="Color"/>.
@@ -1702,9 +1719,9 @@ namespace Microsoft.Xna.Framework
 			return new Vector4(R / 255.0f, G / 255.0f, B / 255.0f, A / 255.0f);
 		}
 
-		#endregion
+#endregion
 
-		#region Public Static Methods
+#region Public Static Methods
 
 		/// <summary>
 		/// Performs linear interpolation of <see cref="Color"/>.
@@ -1759,9 +1776,9 @@ namespace Microsoft.Xna.Framework
 			);
 		}
 
-		#endregion
+#endregion
 
-		#region Public Static Operators and Override Methods
+#region Public Static Operators and Override Methods
 
 		/// <summary>
 		/// Compares whether two <see cref="Color"/> instances are equal.
@@ -1865,9 +1882,9 @@ namespace Microsoft.Xna.Framework
 			return sb.ToString();
 		}
 
-		#endregion
+#endregion
 
-		#region IPackedVector Member
+#region IPackedVector Member
 
 		/// <summary>
 		/// Pack a four-component color from a vector format into the format of a color object.
@@ -1882,7 +1899,7 @@ namespace Microsoft.Xna.Framework
 			A = (byte) (vector.W * 255.0f);
 		}
 
-		#endregion
+#endregion
 
 	}
 }
