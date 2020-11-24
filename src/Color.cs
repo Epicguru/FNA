@@ -1651,7 +1651,12 @@ namespace Microsoft.Xna.Framework
         {
             return new Color(r, g, b, a);
         }
-		private Color(byte r, byte g, byte b, byte a)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static Color Create(Color c, byte a)
+        {
+            return new Color(c.R, c.G, c.B, a);
+        }
+        private Color(byte r, byte g, byte b, byte a)
         {
             packedValue = 0;
 			R = r;
