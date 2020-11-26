@@ -197,7 +197,7 @@ namespace Microsoft.Xna.Framework
 		public void Normalize()
         {
             float lenSqr = (X * X) + (Y * Y);
-            if (lenSqr == 0f)
+            if (lenSqr == 0f || lenSqr == 1f)
                 return;
 			float val = 1.0f / (float) Math.Sqrt(lenSqr);
 			X *= val;
@@ -210,7 +210,7 @@ namespace Microsoft.Xna.Framework
         public Vector2 Normalized()
         {
             float lenSqr = (X * X) + (Y * Y);
-            if (lenSqr == 0f)
+            if (lenSqr == 0f || lenSqr == 1f)
                 return this;
             float val = 1.0f / (float)Math.Sqrt(lenSqr);
             return new Vector2(X * val, Y * val);
