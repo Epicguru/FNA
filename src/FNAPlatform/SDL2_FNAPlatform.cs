@@ -40,11 +40,6 @@ namespace Microsoft.Xna.Framework
 		private static int RetinaWidth;
 		private static int RetinaHeight;
 
-		private static readonly bool OSXUseSpaces = (
-			SDL.SDL_GetPlatform().Equals("Mac OS X") && // Prevents race with OSVersion
-			SDL.SDL_GetHintBoolean(SDL.SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, SDL.SDL_bool.SDL_TRUE) == SDL.SDL_bool.SDL_TRUE
-		);
-
 		#endregion
 
 		#region Game Objects
@@ -89,24 +84,6 @@ namespace Microsoft.Xna.Framework
 			 */
 			SDL.SDL_SetMainReady();
 
-			/* A number of platforms don't support global mouse, but
-			 * this really only matters on desktop where the game
-			 * screen may not be covering the whole display.
-			 */
-			if (	OSVersion.Equals("Windows") ||
-				OSVersion.Equals("Mac OS X") ||
-				OSVersion.Equals("Linux") ||
-				OSVersion.Equals("FreeBSD") ||
-				OSVersion.Equals("OpenBSD") ||
-				OSVersion.Equals("NetBSD")	)
-			{
-				SupportsGlobalMouse = true;
-			}
-			else
-			{
-				SupportsGlobalMouse = false;
-			}
-
 			// Also, Windows is an idiot. -flibit
 			if (	OSVersion.Equals("Windows") ||
 				OSVersion.Equals("WinRT")	)
@@ -145,7 +122,8 @@ namespace Microsoft.Xna.Framework
 			);
 			if (File.Exists(mappingsDB))
 			{
-				SDL.SDL_GameControllerAddMappingsFromFile(
+				SDL.SDL_SetHint(
+					SDL.SDL_HINT_GAMECONTROLLERCONFIG_FILE,
 					mappingsDB
 				);
 			}
@@ -202,6 +180,21 @@ namespace Microsoft.Xna.Framework
 				SDL.SDL_INIT_GAMECONTROLLER |
 				SDL.SDL_INIT_HAPTIC
 			);
+
+			/* A number of platforms don't support global mouse, but
+			 * this really only matters on desktop where the game
+			 * screen may not be covering the whole display.
+			 */
+			if (	OSVersion.Equals("Windows") ||
+				OSVersion.Equals("Mac OS X") ||
+				SDL.SDL_GetCurrentVideoDriver() == "x11"	)
+			{
+				SupportsGlobalMouse = true;
+			}
+			else
+			{
+				SupportsGlobalMouse = false;
+			}
 
 			// Set any hints to match XNA4 behavior...
 			string hint = SDL.SDL_GetHint(SDL.SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS);
@@ -274,6 +267,50 @@ namespace Microsoft.Xna.Framework
 				SDL.SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS |
 				SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS
 			) | (SDL.SDL_WindowFlags) FNA3D.FNA3D_PrepareWindowAttributes();
+
+			if ((initFlags & SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN) == SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN)
+			{
+				string cachePath = SDL.SDL_GetHint(
+					"FNA3D_VULKAN_PIPELINE_CACHE_FILE_NAME"
+				);
+				if (cachePath == null) // Empty is a valid value
+				{
+					if (	OSVersion.Equals("Windows") ||
+						OSVersion.Equals("Mac OS X") ||
+						OSVersion.Equals("Linux") ||
+						OSVersion.Equals("FreeBSD") ||
+						OSVersion.Equals("OpenBSD") ||
+						OSVersion.Equals("NetBSD")	)
+					{
+#if DEBUG // Save pipeline cache files to the base directory for debug builds
+						cachePath = "FNA3D_Vulkan_PipelineCache.blob";
+#else
+						string exeName = Path.GetFileNameWithoutExtension(
+							AppDomain.CurrentDomain.FriendlyName
+						).Replace(".vshost", "");
+						cachePath = Path.Combine(
+							SDL.SDL_GetPrefPath(null, "FNA3D"),
+							exeName + "_Vulkan_PipelineCache.blob"
+						);
+#endif
+					}
+					else
+					{
+						/* For all non-desktop targets, disable
+						 * the pipeline cache. There is usually
+						 * some specialized path you have to
+						 * take to use pipeline cache files, so
+						 * developers will have to do things the
+						 * hard way over there.
+						 */
+						cachePath = string.Empty;
+					}
+					SDL.SDL_SetHint(
+						"FNA3D_VULKAN_PIPELINE_CACHE_FILE_NAME",
+						cachePath
+					);
+				}
+			}
 
 			if (Environment.GetEnvironmentVariable("FNA_GRAPHICS_ENABLE_HIGHDPI") == "1")
 			{
@@ -368,8 +405,7 @@ namespace Microsoft.Xna.Framework
 			ref string resultDeviceName
 		) {
 			bool center = false;
-			if (	Environment.GetEnvironmentVariable("FNA_GRAPHICS_ENABLE_HIGHDPI") == "1" &&
-				OSVersion.Equals("Mac OS X")	)
+			if (Environment.GetEnvironmentVariable("FNA_GRAPHICS_ENABLE_HIGHDPI") == "1")
 			{
 				/* For high-DPI windows, halve the size!
 				 * The drawable size is now the primary width/height, so
@@ -853,7 +889,7 @@ namespace Microsoft.Xna.Framework
 					{
 						game.IsActive = true;
 
-						if (!OSXUseSpaces)
+						if (SDL.SDL_GetCurrentVideoDriver() == "x11")
 						{
 							// If we alt-tab away, we lose the 'fullscreen desktop' flag on some WMs
 							SDL.SDL_SetWindowFullscreen(
@@ -871,7 +907,7 @@ namespace Microsoft.Xna.Framework
 					{
 						game.IsActive = false;
 
-						if (!OSXUseSpaces)
+						if (SDL.SDL_GetCurrentVideoDriver() == "x11")
 						{
 							SDL.SDL_SetWindowFullscreen(game.Window.Handle, 0);
 						}
@@ -1081,14 +1117,14 @@ namespace Microsoft.Xna.Framework
 		private static Game emscriptenGame;
 		private delegate void em_callback_func();
 
-		[DllImport("emscripten", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport("__Native", CallingConvention = CallingConvention.Cdecl)]
 		private static extern void emscripten_set_main_loop(
 			em_callback_func func,
 			int fps,
 			int simulate_infinite_loop
 		);
 
-		[DllImport("emscripten", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport("__Native", CallingConvention = CallingConvention.Cdecl)]
 		private static extern void emscripten_cancel_main_loop();
 
 		[ObjCRuntime.MonoPInvokeCallback(typeof(em_callback_func))]
@@ -1423,6 +1459,16 @@ namespace Microsoft.Xna.Framework
 			return Path.GetPathRoot(storageRoot);
 		}
 
+		public static IntPtr ReadToPointer(string path, out IntPtr size)
+		{
+			return SDL.SDL_LoadFile(path, out size);
+		}
+
+		public static void FreeFilePointer(IntPtr file)
+		{
+			SDL.SDL_free(file);
+		}
+
 		#endregion
 
 		#region Logging/Messaging Methods
@@ -1576,9 +1622,6 @@ namespace Microsoft.Xna.Framework
 				return new GamePadState();
 			}
 
-			// The "master" button state is built from this.
-			Buttons gc_buttonState = (Buttons) 0;
-
 			// Sticks
 			Vector2 stickLeft = new Vector2(
 				(float) SDL.SDL_GameControllerGetAxis(
@@ -1600,22 +1643,6 @@ namespace Microsoft.Xna.Framework
 					SDL.SDL_GameControllerAxis.SDL_CONTROLLER_AXIS_RIGHTY
 				) / -32767.0f
 			);
-			gc_buttonState |= READ_StickToButtons(
-				stickLeft,
-				Buttons.LeftThumbstickLeft,
-				Buttons.LeftThumbstickRight,
-				Buttons.LeftThumbstickUp,
-				Buttons.LeftThumbstickDown,
-				GamePad.LeftDeadZone
-			);
-			gc_buttonState |= READ_StickToButtons(
-				stickRight,
-				Buttons.RightThumbstickLeft,
-				Buttons.RightThumbstickRight,
-				Buttons.RightThumbstickUp,
-				Buttons.RightThumbstickDown,
-				GamePad.RightDeadZone
-			);
 
 			// Triggers
 			float triggerLeft = (float) SDL.SDL_GameControllerGetAxis(
@@ -1626,16 +1653,9 @@ namespace Microsoft.Xna.Framework
 				device,
 				SDL.SDL_GameControllerAxis.SDL_CONTROLLER_AXIS_TRIGGERRIGHT
 			) / 32767.0f;
-			if (triggerLeft > GamePad.TriggerThreshold)
-			{
-				gc_buttonState |= Buttons.LeftTrigger;
-			}
-			if (triggerRight > GamePad.TriggerThreshold)
-			{
-				gc_buttonState |= Buttons.RightTrigger;
-			}
 
 			// Buttons
+			Buttons gc_buttonState = (Buttons) 0;
 			if (SDL.SDL_GameControllerGetButton(device, SDL.SDL_GameControllerButton.SDL_CONTROLLER_BUTTON_A) != 0)
 			{
 				gc_buttonState |= Buttons.A;
@@ -2086,9 +2106,21 @@ namespace Microsoft.Xna.Framework
 			}
 
 			// Print controller information to stdout.
+			string deviceInfo;
+			string mapping = SDL.SDL_GameControllerMapping(INTERNAL_devices[which]);
+			if (string.IsNullOrEmpty(mapping))
+			{
+				deviceInfo = "Mapping not found";
+			}
+			else
+			{
+				deviceInfo = "Mapping: " + mapping;
+			}
 			FNALoggerEXT.LogInfo(
 				"Controller " + which.ToString() + ": " +
-				SDL.SDL_GameControllerName(INTERNAL_devices[which])
+				SDL.SDL_GameControllerName(INTERNAL_devices[which]) + ", " +
+				"GUID: " + INTERNAL_guids[which] + ", " +
+				deviceInfo
 			);
 		}
 
@@ -2110,31 +2142,6 @@ namespace Microsoft.Xna.Framework
 			SDL.SDL_ClearError();
 
 			FNALoggerEXT.LogInfo("Removed device, player: " + output.ToString());
-		}
-
-		// GetState can convert stick values to button values
-		private static Buttons READ_StickToButtons(Vector2 stick, Buttons left, Buttons right, Buttons up , Buttons down, float DeadZoneSize)
-		{
-			Buttons b = (Buttons) 0;
-
-			if (stick.X > DeadZoneSize)
-			{
-				b |= right;
-			}
-			if (stick.X < -DeadZoneSize)
-			{
-				b |= left;
-			}
-			if (stick.Y > DeadZoneSize)
-			{
-				b |= up;
-			}
-			if (stick.Y < -DeadZoneSize)
-			{
-				b |= down;
-			}
-
-			return b;
 		}
 
 		private static string[] GenStringArray()
